@@ -1,0 +1,1067 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#000000">
+<meta name="description" content="Otis — Jouw persoonlijke AI buddy">
+<title>Otis</title>
+<link rel="manifest" href="manifest.json">
+<!-- Apple touch icons (inline SVG via data URL) -->
+<link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' rx='120' fill='%23000'/%3E%3Ccircle cx='200' cy='220' r='28' fill='%23fff'/%3E%3Ccircle cx='312' cy='220' r='28' fill='%23fff'/%3E%3Cpath d='M200 300 Q256 360 312 300' stroke='%23fff' stroke-width='16' fill='none' stroke-linecap='round'/%3E%3C/svg%3E">
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#000;--s1:#0f0f0f;--s2:#181818;--s3:#222;
+  --b1:rgba(255,255,255,.07);--b2:rgba(255,255,255,.13);
+  --w:#fff;--ws:rgba(255,255,255,.85);--wd:rgba(255,255,255,.4);--wg:rgba(255,255,255,.05);
+  --blue:#4a9eff;--green:#30d158;--red:#ff453a;--yellow:#ffd60a;--purple:#bf5af2;--orange:#ff9f0a;
+}
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{width:100%;height:100%;background:#000;color:#fff;font-family:'Nunito',sans-serif;overflow:hidden;touch-action:manipulation;user-select:none;-webkit-user-select:none}
+
+/* ═══════════ SPLASH ═══════════ */
+#splash{position:fixed;inset:0;background:#000;display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:9000;transition:opacity 1s ease,transform 1s ease}
+#splash.out{opacity:0;transform:scale(1.08);pointer-events:none}
+.sp-face{width:110px;height:110px;background:linear-gradient(145deg,#1a1a1a,#0d0d0d);border-radius:50%;border:2px solid rgba(255,255,255,.1);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;animation:spFloat 2.2s ease-in-out infinite;box-shadow:0 0 80px rgba(255,255,255,.03),inset 0 1px 0 rgba(255,255,255,.06)}
+@keyframes spFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-9px)}}
+.sp-eyes{display:flex;gap:24px}
+.sp-eye{width:11px;height:11px;background:#fff;border-radius:50%;animation:spBlink 3.2s ease-in-out infinite}
+@keyframes spBlink{0%,88%,100%{transform:scaleY(1)}94%{transform:scaleY(.08)}}
+.sp-mouth{width:28px;height:14px;border:3px solid #fff;border-top:none;border-radius:0 0 28px 28px;animation:spSmile 2.2s ease-in-out infinite}
+@keyframes spSmile{0%,100%{width:24px}50%{width:30px}}
+.sp-name{margin-top:30px;font-size:52px;font-weight:900;letter-spacing:.07em;background:linear-gradient(135deg,#fff 0%,rgba(255,255,255,.55) 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;opacity:0;animation:fadeUp .7s ease .5s forwards}
+.sp-sub{margin-top:5px;font-size:12px;color:var(--wd);letter-spacing:.16em;text-transform:uppercase;font-weight:700;opacity:0;animation:fadeUp .7s ease .8s forwards}
+.sp-bar{width:50px;height:2px;background:var(--b2);border-radius:2px;overflow:hidden;margin-top:40px;opacity:0;animation:fadeUp .5s ease 1s forwards}
+.sp-bar::after{content:'';display:block;height:100%;width:0;background:#fff;border-radius:2px;animation:barFill 1.2s ease 1.1s forwards}
+@keyframes barFill{from{width:0}to{width:100%}}
+@keyframes fadeUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+
+/* ═══════════ APP ═══════════ */
+#app{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;opacity:0;transition:opacity .9s ease .2s}
+#app.show{opacity:1}
+#dim{position:fixed;inset:0;background:#000;opacity:0;pointer-events:none;z-index:800;transition:opacity .5s}
+#toast{position:fixed;top:58px;left:50%;transform:translateX(-50%) translateY(-14px);background:var(--s2);border:1px solid var(--b2);border-radius:13px;padding:9px 18px;font-size:13px;font-weight:700;color:var(--ws);z-index:901;opacity:0;transition:all .3s;white-space:nowrap;pointer-events:none}
+#toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+/* ═══════════ TOPBAR ═══════════ */
+.topbar{width:100%;max-width:430px;padding:54px 22px 0;display:flex;align-items:center;justify-content:space-between;z-index:2;position:relative}
+.tb-l .tb-name{font-size:21px;font-weight:900;letter-spacing:.02em}
+.tb-l .tb-time{font-size:11px;color:var(--wd);font-weight:700;margin-top:2px;letter-spacing:.05em}
+.tb-r{display:flex;gap:9px;align-items:center}
+.ib{width:36px;height:36px;border-radius:12px;background:var(--wg);border:1px solid var(--b1);display:flex;align-items:center;justify-content:center;font-size:17px;cursor:pointer;transition:all .2s;position:relative}
+.ib:active{transform:scale(.86);background:var(--s2)}
+.mbadge{position:absolute;top:-5px;right:-5px;width:17px;height:17px;border-radius:50%;background:var(--purple);font-size:9px;font-weight:800;display:flex;align-items:center;justify-content:center;border:2px solid #000;transition:transform .3s cubic-bezier(.34,1.56,.64,1)}
+.sdot{width:7px;height:7px;border-radius:50%;background:var(--green);box-shadow:0 0 9px var(--green);animation:sdot 3s ease-in-out infinite}
+@keyframes sdot{0%,100%{opacity:.5;transform:scale(1)}50%{opacity:1;transform:scale(1.45)}}
+
+/* wake pill */
+.wpill{position:absolute;top:14px;left:50%;transform:translateX(-50%);display:flex;align-items:center;gap:6px;background:rgba(0,0,0,.75);border:1px solid var(--b1);border-radius:18px;padding:5px 13px;font-size:11px;font-weight:700;color:var(--wd);letter-spacing:.07em;z-index:10;backdrop-filter:blur(10px)}
+.wdot{width:5px;height:5px;border-radius:50%;background:var(--green);animation:sdot 2s infinite;transition:background .3s}
+.wdot.off{background:#333;animation:none}
+
+/* ═══════════ FACE STAGE ═══════════ */
+.stage{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;position:relative;width:100%}
+
+/* Ambient glow */
+.glow{position:absolute;width:240px;height:240px;border-radius:50%;transition:all .9s ease;pointer-events:none;will-change:background,transform}
+
+/* ══ FACE SHELL ══ */
+.face-shell{
+  position:relative;
+  width:148px;height:148px;
+  border-radius:50%;
+  background:linear-gradient(160deg,#1e1e1e 0%,#0e0e0e 100%);
+  border:2px solid rgba(255,255,255,.08);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  cursor:pointer;z-index:2;
+  transition:transform .3s cubic-bezier(.34,1.56,.64,1),box-shadow .5s ease,border-color .5s;
+  box-shadow:0 12px 40px rgba(0,0,0,.7),inset 0 1px 0 rgba(255,255,255,.05);
+  will-change:transform;
+}
+.face-shell:active{transform:scale(.91)!important}
+
+/* mood-based shell glow */
+.face-shell.f-happy  {box-shadow:0 12px 40px rgba(0,0,0,.7),0 0 50px rgba(48,209,88,.1)}
+.face-shell.f-sad    {box-shadow:0 12px 40px rgba(0,0,0,.7),0 0 50px rgba(74,158,255,.1)}
+.face-shell.f-love   {box-shadow:0 12px 40px rgba(0,0,0,.7),0 0 50px rgba(255,100,130,.1);animation:lovePulse 2s ease-in-out infinite}
+.face-shell.f-listen {box-shadow:0 12px 40px rgba(0,0,0,.7),0 0 50px rgba(74,158,255,.15);animation:listenBob .8s ease-in-out infinite alternate}
+.face-shell.f-speak  {animation:speakBob .28s ease-in-out infinite alternate}
+.face-shell.f-surprise{animation:surpriseJump .4s cubic-bezier(.34,1.86,.64,1)}
+@keyframes lovePulse {0%,100%{box-shadow:0 12px 40px rgba(0,0,0,.7),0 0 50px rgba(255,100,130,.08)}50%{box-shadow:0 12px 40px rgba(0,0,0,.7),0 0 70px rgba(255,100,130,.18)}}
+@keyframes listenBob {from{transform:scale(1)}to{transform:scale(1.035)}}
+@keyframes speakBob  {from{transform:scale(1)}to{transform:scale(1.025)}}
+@keyframes surpriseJump{0%{transform:scale(1)}40%{transform:scale(1.12) translateY(-6px)}70%{transform:scale(.97)}100%{transform:scale(1)}}
+
+/* ══ EYES ══ */
+.face-eyes{display:flex;gap:26px;align-items:center;margin-bottom:10px}
+.feye{
+  background:#fff;border-radius:50%;
+  transition:all .45s cubic-bezier(.34,1.56,.64,1);
+  transform-origin:center;
+  will-change:transform,width,height,border-radius,opacity;
+}
+/* idle */
+.f-idle   .feye{width:12px;height:12px;border-radius:50%}
+/* happy: eyebrows up, squint joy */
+.f-happy  .feye{width:15px;height:9px;border-radius:15px 15px 8px 8px;transform:translateY(-2px)}
+/* sad: droopy */
+.f-sad    .feye{width:12px;height:10px;border-radius:50%}
+.f-sad    .feye:first-child{transform:rotate(14deg) translate(1px,2px)}
+.f-sad    .feye:last-child {transform:rotate(-14deg) translate(-1px,2px)}
+/* think: one half-closed */
+.f-think  .feye{width:14px;height:8px;border-radius:8px}
+.f-think  .feye:last-child{width:10px;height:5px;opacity:.55;transform:translateY(2px)}
+/* listen: wide & alive */
+.f-listen .feye{width:14px;height:14px;border-radius:50%;animation:eyeAlive 1.8s ease-in-out infinite}
+@keyframes eyeAlive{0%,100%{transform:scale(1)}50%{transform:scale(1.1)}}
+/* surprise */
+.f-surprise .feye{width:16px;height:16px;border-radius:50%}
+/* love: warm glow eyes */
+.f-love   .feye{width:13px;height:13px;border-radius:50%;box-shadow:0 0 10px rgba(255,160,160,.55)}
+/* speak */
+.f-speak  .feye{width:12px;height:12px;border-radius:50%;animation:speakEye .5s ease-in-out infinite alternate}
+@keyframes speakEye{from{transform:scaleY(1)}to{transform:scaleY(.82)}}
+
+/* blink */
+.feye.blink{animation:blinkIt .16s ease-in-out!important}
+@keyframes blinkIt{0%,100%{transform:scaleY(1)}50%{transform:scaleY(.06)}}
+
+/* ══ NOSE ══ */
+.fnose{width:5px;height:5px;border-radius:50%;background:rgba(255,255,255,.15);margin-bottom:6px;transition:opacity .4s}
+.f-speak .fnose,.f-happy .fnose{opacity:.06}
+
+/* ══ MOUTH ══ */
+.fmouth-wrap{width:56px;height:24px;display:flex;align-items:center;justify-content:center;overflow:visible}
+.fmouth{transition:all .45s cubic-bezier(.34,1.56,.64,1);will-change:all;flex-shrink:0}
+
+.f-idle    .fmouth{width:24px;height:3px;background:#fff;border-radius:3px;border:none}
+.f-happy   .fmouth{width:48px;height:20px;background:transparent;border:3.5px solid #fff;border-top:none;border-radius:0 0 48px 48px}
+.f-sad     .fmouth{width:30px;height:13px;background:transparent;border:3.5px solid rgba(180,200,255,.9);border-bottom:none;border-radius:30px 30px 0 0;margin-top:10px}
+.f-think   .fmouth{width:18px;height:3px;background:#fff;border-radius:3px;transform:translateX(5px) rotate(-8deg);opacity:.65}
+.f-listen  .fmouth{width:16px;height:16px;background:transparent;border:3px solid rgba(255,255,255,.7);border-radius:50%;animation:listenMouth 1.1s ease-in-out infinite}
+@keyframes listenMouth{0%,100%{width:10px;height:10px}50%{width:16px;height:16px}}
+.f-surprise .fmouth{width:22px;height:22px;background:transparent;border:3.5px solid #fff;border-radius:50%}
+.f-love    .fmouth{width:42px;height:18px;background:transparent;border:3.5px solid rgba(255,170,170,.9);border-top:none;border-radius:0 0 42px 42px}
+.f-speak   .fmouth{animation:talkLoop .22s ease-in-out infinite alternate;width:20px;height:12px;background:transparent;border:3.5px solid #fff;border-radius:50%}
+@keyframes talkLoop{
+  0%  {width:16px;height:8px;border-radius:16px;background:#fff;border:none}
+  33% {width:22px;height:20px;background:transparent;border:3.5px solid #fff;border-radius:50%}
+  66% {width:28px;height:6px;border-radius:6px;background:#fff;border:none}
+  100%{width:18px;height:18px;background:transparent;border:3.5px solid #fff;border-radius:50%}
+}
+
+/* ══ CHEEKS ══ */
+.cheeks{position:absolute;bottom:32px;display:flex;gap:74px;pointer-events:none;opacity:0;transition:opacity .6s}
+.cheek{width:26px;height:11px;background:rgba(255,140,140,.22);border-radius:50%;filter:blur(5px)}
+.f-happy .cheeks,.f-love .cheeks{opacity:1}
+
+/* ══ MOOD LABEL ══ */
+.mood-lbl{margin-top:18px;display:flex;align-items:center;gap:7px;padding:5px 15px;background:var(--wg);border:1px solid var(--b1);border-radius:20px;font-size:12px;font-weight:700;color:var(--wd);letter-spacing:.06em;text-transform:uppercase;transition:all .4s}
+.mdot{width:6px;height:6px;border-radius:50%;background:var(--green);transition:background .4s;flex-shrink:0}
+
+/* ═══════════ BUBBLE ═══════════ */
+.bub-w{width:100%;max-width:430px;padding:0 22px;margin-top:14px;z-index:2}
+.bub{background:var(--s1);border:1px solid var(--b1);border-radius:22px;padding:15px 20px;font-size:15px;font-weight:600;line-height:1.6;color:var(--ws);min-height:56px;display:flex;align-items:center;justify-content:center;text-align:center;transition:all .3s;position:relative;overflow:hidden}
+.bub::before{content:'';position:absolute;inset:0;background:linear-gradient(135deg,rgba(255,255,255,.015) 0%,transparent 60%);pointer-events:none}
+.bub.empty{opacity:.22}
+.bub.emo{border-color:rgba(100,140,255,.22);background:rgba(80,100,255,.04)}
+.tdots{display:flex;gap:7px;align-items:center}
+.td{width:7px;height:7px;background:var(--wd);border-radius:50%;animation:tdot 1.2s ease-in-out infinite}
+.td:nth-child(2){animation-delay:.18s}.td:nth-child(3){animation-delay:.36s}
+@keyframes tdot{0%,60%,100%{transform:translateY(0);opacity:.4}30%{transform:translateY(-7px);opacity:1}}
+
+/* ═══════════ HISTORY ═══════════ */
+.hist{width:100%;max-width:430px;padding:7px 22px 0;display:flex;flex-direction:column;gap:4px;max-height:76px;overflow-y:auto;scrollbar-width:none;z-index:2}
+.hist::-webkit-scrollbar{display:none}
+.hm{font-size:11.5px;font-weight:600;line-height:1.4;padding:4px 10px;border-radius:8px;background:var(--wg);color:var(--wd);max-width:88%;animation:hmIn .22s ease forwards}
+.hm.u{align-self:flex-end;text-align:right}.hm.b{align-self:flex-start}
+@keyframes hmIn{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:translateY(0)}}
+
+/* ═══════════ BOTTOM ═══════════ */
+.bottom{width:100%;max-width:430px;padding:10px 22px 48px;display:flex;flex-direction:column;gap:9px;z-index:2}
+.pills{display:flex;gap:7px;overflow-x:auto;padding-bottom:2px;scrollbar-width:none}
+.pills::-webkit-scrollbar{display:none}
+.pill{flex-shrink:0;height:35px;padding:0 14px;border-radius:10px;background:var(--wg);border:1px solid var(--b1);color:var(--ws);font-family:'Nunito',sans-serif;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap;display:flex;align-items:center;gap:5px;transition:all .18s}
+.pill:active{background:var(--s2);transform:scale(.93)}
+.irow{display:flex;gap:8px;align-items:center}
+.txtin{flex:1;height:50px;background:var(--s1);border:1px solid var(--b1);border-radius:15px;color:#fff;font-family:'Nunito',sans-serif;font-size:15px;font-weight:600;padding:0 18px;outline:none;transition:border-color .2s;-webkit-appearance:none}
+.txtin:focus{border-color:var(--b2)}
+.txtin::placeholder{color:var(--wd)}
+.sbtn{width:50px;height:50px;border-radius:15px;background:#fff;border:none;color:#000;font-size:22px;font-weight:900;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .18s;flex-shrink:0}
+.sbtn:active{transform:scale(.87);background:#ddd}
+.micbtn{width:100%;height:62px;border-radius:18px;background:var(--s1);border:1.5px solid var(--b2);color:#fff;font-family:'Nunito',sans-serif;font-size:15px;font-weight:800;letter-spacing:.03em;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:10px;transition:all .2s;position:relative;overflow:hidden}
+.micbtn::after{content:'';position:absolute;inset:0;background:linear-gradient(135deg,rgba(255,255,255,.03),transparent);pointer-events:none}
+.micbtn:active{transform:scale(.98)}
+.micbtn.on{background:var(--blue);border-color:transparent;animation:micPulse .85s ease-in-out infinite}
+@keyframes micPulse{0%,100%{box-shadow:0 0 0 0 rgba(74,158,255,.5)}50%{box-shadow:0 0 0 16px rgba(74,158,255,0)}}
+
+/* ═══════════ OVERLAYS ═══════════ */
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.6);backdrop-filter:blur(26px);-webkit-backdrop-filter:blur(26px);z-index:400;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;opacity:0;pointer-events:none;transition:opacity .3s}
+.overlay.show{opacity:1;pointer-events:all}
+.sheet{width:100%;max-width:430px;background:var(--s1);border-radius:28px 28px 0 0;padding:20px 22px 54px;transform:translateY(30px);transition:transform .35s cubic-bezier(.34,1.2,.64,1);max-height:88vh;overflow-y:auto}
+.overlay.show .sheet{transform:translateY(0)}
+.shdl{width:36px;height:4px;background:var(--b2);border-radius:2px;margin:0 auto 20px}
+.shtitle{font-size:22px;font-weight:900;margin-bottom:16px}
+.srow{display:flex;align-items:center;justify-content:space-between;padding:13px 0;border-bottom:1px solid var(--b1)}
+.srow:last-of-type{border-bottom:none}
+.slbl{font-size:15px;font-weight:700;color:var(--ws)}
+.ssub{font-size:12px;color:var(--wd);margin-top:2px;font-weight:600}
+.tog{width:47px;height:27px;border-radius:14px;background:var(--s3);border:1px solid var(--b1);position:relative;cursor:pointer;transition:background .28s;flex-shrink:0}
+.tog.on{background:var(--green);border-color:transparent}
+.tog::after{content:'';position:absolute;width:21px;height:21px;background:#fff;border-radius:50%;top:2px;left:2px;transition:transform .28s cubic-bezier(.34,1.56,.64,1);box-shadow:0 1px 4px rgba(0,0,0,.4)}
+.tog.on::after{transform:translateX(20px)}
+.rrow{display:flex;align-items:center;gap:10px;margin-top:8px}
+.ric{font-size:15px;color:var(--wd)}
+input[type=range]{flex:1;-webkit-appearance:none;height:3px;background:var(--s3);border-radius:2px;outline:none}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:22px;height:22px;background:#fff;border-radius:50%;cursor:pointer;box-shadow:0 1px 6px rgba(0,0,0,.5)}
+.shbtn{width:100%;height:50px;margin-top:12px;background:var(--s2);border:1px solid var(--b1);border-radius:15px;color:#fff;font-family:'Nunito',sans-serif;font-size:15px;font-weight:800;cursor:pointer;transition:all .18s}
+.shbtn:active{transform:scale(.98)}
+.shbtn.primary{background:#fff;color:#000}
+.shbtn.primary:active{background:#ddd}
+
+/* notif */
+.nitem{padding:13px 0;border-bottom:1px solid var(--b1);display:flex;gap:13px;align-items:flex-start}
+.nitem:last-child{border-bottom:none}
+.nico{font-size:24px;flex-shrink:0;margin-top:1px}
+.nbody{flex:1}
+.napp{font-size:11px;color:var(--wd);margin-bottom:3px;letter-spacing:.07em;font-weight:800;text-transform:uppercase}
+.ntxt{font-size:14px;color:var(--ws);line-height:1.4;font-weight:700}
+.ntim{font-size:11px;color:var(--wd);margin-top:3px;font-weight:600}
+
+/* memory */
+.mitem{padding:10px 0;border-bottom:1px solid var(--b1)}
+.mitem:last-child{border-bottom:none}
+.mk{font-size:11px;color:var(--wd);text-transform:uppercase;letter-spacing:.09em;font-weight:800}
+.mv{font-size:15px;font-weight:700;margin-top:2px}
+
+/* ═══════════ WEATHER CARD ═══════════ */
+.weather-card{
+  width:100%;max-width:430px;padding:0 22px;
+  margin-top:0;z-index:2;
+  display:none;
+}
+.weather-card.show{display:block}
+.wcard-inner{
+  background:var(--s1);border:1px solid var(--b1);border-radius:18px;
+  padding:14px 18px;
+  display:flex;align-items:center;justify-content:space-between;
+  animation:hmIn .3s ease forwards;
+}
+.wcard-l{display:flex;flex-direction:column;gap:2px}
+.wcard-city{font-size:12px;color:var(--wd);font-weight:700;text-transform:uppercase;letter-spacing:.06em}
+.wcard-temp{font-size:28px;font-weight:900;line-height:1}
+.wcard-desc{font-size:13px;color:var(--ws);font-weight:600;margin-top:2px}
+.wcard-icon{font-size:44px;line-height:1}
+.wcard-x{position:absolute;top:8px;right:8px;width:22px;height:22px;background:var(--wg);border-radius:50%;border:1px solid var(--b1);display:flex;align-items:center;justify-content:center;font-size:11px;color:var(--wd);cursor:pointer}
+
+/* ═══════════ EMOTION SCREEN ═══════════ */
+#emo{position:fixed;inset:0;background:#000;z-index:600;display:flex;flex-direction:column;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:opacity .6s}
+#emo.show{opacity:1;pointer-events:all}
+.emo-x{position:absolute;top:52px;right:22px;width:36px;height:36px;border-radius:50%;background:var(--wg);border:1px solid var(--b1);display:flex;align-items:center;justify-content:center;font-size:15px;color:var(--wd);cursor:pointer;transition:all .2s}
+.emo-x:active{transform:scale(.88)}
+/* big cute face */
+.emo-face-wrap{position:relative;margin-bottom:26px}
+.emo-face{width:120px;height:120px;border-radius:50%;background:linear-gradient(160deg,#1e1e1e,#0e0e0e);border:2px solid rgba(255,255,255,.08);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:0;box-shadow:0 0 60px rgba(100,130,255,.09);animation:emoFloat 3s ease-in-out infinite}
+@keyframes emoFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-7px)}}
+.emo-eyes{display:flex;gap:22px;margin-bottom:10px}
+.emo-eye{width:12px;height:12px;background:#fff;border-radius:50%;box-shadow:0 0 8px rgba(200,180,255,.25)}
+.emo-mouth{width:36px;height:16px;border:3px solid rgba(200,180,255,.8);border-top:none;border-radius:0 0 36px 36px}
+.emo-cheeks{position:absolute;bottom:22px;display:flex;gap:76px;pointer-events:none}
+.emo-cheek{width:22px;height:9px;background:rgba(200,160,255,.2);border-radius:50%;filter:blur(4px)}
+.emo-title{font-size:26px;font-weight:900;text-align:center;margin-bottom:6px}
+.emo-sub{font-size:14px;color:var(--wd);text-align:center;line-height:1.65;max-width:280px;font-weight:600}
+.emo-area{width:100%;max-width:380px;padding:0 22px;margin-top:26px;display:flex;flex-direction:column;gap:10px}
+.emo-in{width:100%;min-height:96px;background:var(--s1);border:1.5px solid var(--b2);border-radius:18px;color:#fff;font-family:'Nunito',sans-serif;font-size:15px;font-weight:600;padding:14px 18px;outline:none;resize:none;line-height:1.55}
+.emo-in::placeholder{color:var(--wd)}
+.emo-send{width:100%;height:56px;border-radius:17px;background:#fff;color:#000;border:none;font-family:'Nunito',sans-serif;font-size:16px;font-weight:900;cursor:pointer;transition:all .18s}
+.emo-send:active{transform:scale(.97);background:#e5e5e5}
+.emo-resp{width:100%;max-width:380px;padding:0 22px;margin-top:14px;font-size:15px;font-weight:600;line-height:1.7;color:var(--ws);text-align:center;min-height:48px}
+.emo-mic{width:100%;height:48px;border-radius:15px;background:var(--wg);border:1px solid var(--b2);color:#fff;font-family:'Nunito',sans-serif;font-size:14px;font-weight:800;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;transition:all .18s}
+.emo-mic.on{background:var(--blue);border-color:transparent}
+
+/* ═══════════ INSTALL GUIDE ═══════════ */
+#installGuide{position:fixed;inset:0;background:rgba(0,0,0,.7);backdrop-filter:blur(28px);-webkit-backdrop-filter:blur(28px);z-index:700;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;opacity:0;pointer-events:none;transition:opacity .3s}
+#installGuide.show{opacity:1;pointer-events:all}
+.ig-sheet{width:100%;max-width:430px;background:var(--s1);border-radius:28px 28px 0 0;padding:22px 24px 54px;transform:translateY(30px);transition:transform .35s cubic-bezier(.34,1.2,.64,1)}
+#installGuide.show .ig-sheet{transform:translateY(0)}
+.ig-step{display:flex;gap:14px;align-items:flex-start;padding:12px 0;border-bottom:1px solid var(--b1)}
+.ig-step:last-of-type{border-bottom:none}
+.ig-num{width:28px;height:28px;border-radius:50%;background:var(--wg);border:1px solid var(--b2);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:900;flex-shrink:0;margin-top:1px}
+.ig-txt{font-size:14px;font-weight:700;color:var(--ws);line-height:1.5}
+.ig-sub{font-size:12px;color:var(--wd);margin-top:2px;font-weight:600}
+.ig-badge{display:inline-block;background:var(--s3);border:1px solid var(--b2);border-radius:7px;padding:2px 8px;font-size:12px;font-weight:800;color:var(--ws);margin-top:4px}
+
+/* ═══════════ GITHUB GUIDE ═══════════ */
+#githubGuide{position:fixed;inset:0;background:rgba(0,0,0,.7);backdrop-filter:blur(28px);-webkit-backdrop-filter:blur(28px);z-index:700;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;opacity:0;pointer-events:none;transition:opacity .3s}
+#githubGuide.show{opacity:1;pointer-events:all}
+.gg-sheet{width:100%;max-width:430px;background:var(--s1);border-radius:28px 28px 0 0;padding:22px 24px 54px;transform:translateY(30px);transition:transform .35s cubic-bezier(.34,1.2,.64,1);max-height:90vh;overflow-y:auto}
+#githubGuide.show .gg-sheet{transform:translateY(0)}
+.step-card{background:var(--s2);border:1px solid var(--b1);border-radius:16px;padding:14px 16px;margin-bottom:10px}
+.step-n{font-size:11px;color:var(--wd);font-weight:800;text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px}
+.step-t{font-size:15px;font-weight:800;color:var(--ws);margin-bottom:4px}
+.step-d{font-size:13px;color:var(--wd);font-weight:600;line-height:1.5}
+.step-code{margin-top:8px;background:var(--s3);border-radius:8px;padding:8px 12px;font-size:12px;font-weight:700;color:rgba(255,255,255,.7);font-family:monospace;word-break:break-all}
+</style>
+</head>
+<body>
+
+<!-- SPLASH -->
+<div id="splash">
+  <div class="sp-face">
+    <div class="sp-eyes"><div class="sp-eye"></div><div class="sp-eye"></div></div>
+    <div class="sp-mouth"></div>
+  </div>
+  <div class="sp-name">Otis</div>
+  <div class="sp-sub">Jouw persoonlijke buddy</div>
+  <div class="sp-bar"></div>
+</div>
+
+<div id="dim"></div>
+<div id="toast"></div>
+
+<!-- APP -->
+<div id="app">
+  <div class="wpill"><div class="wdot" id="wdot"></div><span id="wtxt">Hey Otis</span></div>
+
+  <!-- Topbar -->
+  <div class="topbar">
+    <div class="tb-l"><div class="tb-name">Otis</div><div class="tb-time" id="ttime"></div></div>
+    <div class="tb-r">
+      <div class="ib" onclick="openMem()">🧠<div class="mbadge" id="mbadge">0</div></div>
+      <div class="ib" onclick="openEmo()">💙</div>
+      <div class="ib" onclick="showGithubGuide()">📲</div>
+      <div class="ib" onclick="openSet()">⚙</div>
+      <div class="sdot"></div>
+    </div>
+  </div>
+
+  <!-- Face stage -->
+  <div class="stage">
+    <div class="glow" id="glow"></div>
+    <div class="face-shell f-idle" id="face" onclick="onTap()">
+      <div class="face-eyes"><div class="feye" id="el"></div><div class="feye" id="er"></div></div>
+      <div class="fnose"></div>
+      <div class="fmouth-wrap"><div class="fmouth" id="fmouth"></div></div>
+      <div class="cheeks"><div class="cheek"></div><div class="cheek"></div></div>
+    </div>
+    <div class="mood-lbl"><div class="mdot" id="mdot"></div><span id="mlbl">Tik om te praten</span></div>
+  </div>
+
+  <!-- Weather card (hidden by default) -->
+  <div class="weather-card" id="weatherCard">
+    <div class="wcard-inner" style="position:relative">
+      <div class="wcard-l">
+        <div class="wcard-city" id="wCity">Laden…</div>
+        <div class="wcard-temp" id="wTemp">--°</div>
+        <div class="wcard-desc" id="wDesc">--</div>
+      </div>
+      <div class="wcard-icon" id="wIcon">🌤</div>
+      <div class="wcard-x" onclick="hideWeather()">✕</div>
+    </div>
+  </div>
+
+  <!-- Bubble -->
+  <div class="bub-w"><div class="bub empty" id="bub"><span id="btxt">Zeg "Hey Otis" of tik op mij 👆</span></div></div>
+
+  <!-- History -->
+  <div class="hist" id="hist"></div>
+
+  <!-- Bottom -->
+  <div class="bottom">
+    <div class="pills">
+      <div class="pill" onclick="qdo('bel')">📞 Bellen</div>
+      <div class="pill" onclick="qdo('notif')">🔔 Meldingen</div>
+      <div class="pill" onclick="qdo('weer')">🌤 Weer</div>
+      <div class="pill" onclick="qdo('dim')">🌙 Dim</div>
+      <div class="pill" onclick="qdo('spotify')">🎵 Spotify</div>
+      <div class="pill" onclick="qdo('whatsapp')">💬 WhatsApp</div>
+      <div class="pill" onclick="qdo('youtube')">📺 YouTube</div>
+      <div class="pill" onclick="qdo('maps')">🗺 Maps</div>
+      <div class="pill" onclick="openEmo()">💙 Gevoelens</div>
+    </div>
+    <div class="irow">
+      <input type="text" class="txtin" id="txtin" placeholder="Typ iets aan Otis…" onkeypress="onK(event)">
+      <button class="sbtn" onclick="send()">↑</button>
+    </div>
+    <button class="micbtn" id="micbtn" onclick="togMic()">
+      <span style="font-size:21px">🎙</span>
+      <span id="miclbl">Tik om te spreken</span>
+    </button>
+  </div>
+</div>
+
+<!-- SETTINGS -->
+<div class="overlay" id="setP" onclick="closeP('setP',event)">
+  <div class="sheet">
+    <div class="shdl"></div>
+    <div class="shtitle">Instellingen ⚙️</div>
+    <div class="srow"><div><div class="slbl">Scherm dimmen</div><div class="ssub">Verduistering via overlay</div></div></div>
+    <div class="rrow"><span class="ric">☀️</span><input type="range" id="dslider" min="0" max="80" value="0" oninput="applyDim(this.value)"><span class="ric">🌙</span></div>
+    <div class="srow" style="margin-top:10px"><div><div class="slbl">Volume</div><div class="ssub">Hoe hard Otis praat</div></div></div>
+    <div class="rrow"><span class="ric">🔈</span><input type="range" id="vslider" min="0" max="100" value="90" oninput="applyVol(this.value)"><span class="ric">🔊</span></div>
+    <div class="srow" style="margin-top:10px">
+      <div><div class="slbl">Stem aan</div><div class="ssub">Otis praat terug</div></div>
+      <div class="tog on" id="vtog" onclick="togV()"></div>
+    </div>
+    <div class="srow">
+      <div><div class="slbl">Wake word</div><div class="ssub">"Otis" of "Hey Otis"</div></div>
+      <div class="tog on" id="wtog" onclick="togW()"></div>
+    </div>
+    <div class="srow">
+      <div><div class="slbl">Spraaksnelheid</div><div class="ssub">Tempo van Otis zijn stem</div></div>
+    </div>
+    <div class="rrow"><span class="ric">🐢</span><input type="range" id="rateslider" min="60" max="110" value="88" oninput="applyRate(this.value)"><span class="ric">🐇</span></div>
+    <button class="shbtn" onclick="clearMem()">🗑 Geheugen wissen</button>
+    <button class="shbtn primary" onclick="showGithubGuide();closeP('setP')">📲 App installeren</button>
+    <button class="shbtn" onclick="closeP('setP')">Sluiten</button>
+  </div>
+</div>
+
+<!-- NOTIF -->
+<div class="overlay" id="notifP" onclick="closeP('notifP',event)">
+  <div class="sheet">
+    <div class="shdl"></div>
+    <div class="shtitle">Meldingen 🔔</div>
+    <div id="notifC">Laden…</div>
+    <button class="shbtn" onclick="closeP('notifP')">Sluiten</button>
+  </div>
+</div>
+
+<!-- MEMORY -->
+<div class="overlay" id="memP" onclick="closeP('memP',event)">
+  <div class="sheet">
+    <div class="shdl"></div>
+    <div class="shtitle">Wat Otis onthoudt 🧠</div>
+    <div id="memC"></div>
+    <button class="shbtn" onclick="closeP('memP')">Sluiten</button>
+  </div>
+</div>
+
+<!-- GITHUB GUIDE -->
+<div id="githubGuide" onclick="closeGG(event)">
+  <div class="gg-sheet">
+    <div class="shdl"></div>
+    <div class="shtitle">📲 Otis als app installeren</div>
+    <p style="font-size:13px;color:var(--wd);font-weight:600;margin-bottom:16px;line-height:1.6">Zo zet je Otis op je startscherm via GitHub Pages (gratis, geen account vereist voor bezoeken):</p>
+
+    <div class="step-card">
+      <div class="step-n">Stap 1</div>
+      <div class="step-t">Maak een GitHub account</div>
+      <div class="step-d">Ga naar <strong>github.com</strong> en maak een gratis account aan als je er nog geen hebt.</div>
+    </div>
+    <div class="step-card">
+      <div class="step-n">Stap 2</div>
+      <div class="step-t">Maak een nieuw repository</div>
+      <div class="step-d">Klik op het <strong>+</strong> icoontje → "New repository". Geef het de naam:</div>
+      <div class="step-code">otis</div>
+      <div class="step-d" style="margin-top:6px">Vink <strong>"Add a README file"</strong> aan, dan "Create repository".</div>
+    </div>
+    <div class="step-card">
+      <div class="step-n">Stap 3</div>
+      <div class="step-t">Upload otis.html als index.html</div>
+      <div class="step-d">Klik op "Add file" → "Upload files". Sleep het gedownloade <strong>otis.html</strong> bestand erin en hernoem het naar:</div>
+      <div class="step-code">index.html</div>
+      <div class="step-d" style="margin-top:6px">Klik "Commit changes".</div>
+    </div>
+    <div class="step-card">
+      <div class="step-n">Stap 4</div>
+      <div class="step-t">Zet GitHub Pages aan</div>
+      <div class="step-d">Ga naar je repository → <strong>Settings</strong> → <strong>Pages</strong>. Onder "Source" kies je <strong>main</strong> branch. Klik Save.</div>
+    </div>
+    <div class="step-card">
+      <div class="step-n">Stap 5</div>
+      <div class="step-t">Open de link in Chrome op je telefoon</div>
+      <div class="step-d">Je URL wordt:</div>
+      <div class="step-code">https://[jouwgebruikersnaam].github.io/otis</div>
+      <div class="step-d" style="margin-top:6px">Open deze link in <strong>Chrome op je Android</strong>.</div>
+    </div>
+    <div class="step-card">
+      <div class="step-n">Stap 6 — Installeren!</div>
+      <div class="step-t">Toevoegen aan startscherm</div>
+      <div class="step-d">In Chrome: tik op de <strong>⋮ drie puntjes</strong> rechtsbovenin → <strong>"Toevoegen aan startscherm"</strong>. Otis verschijnt als echte app op je startscherm! Microfoon, meldingen — alles werkt nu. 🎉</div>
+    </div>
+
+    <button class="shbtn primary" onclick="window.open('https://github.com','_blank')">Naar GitHub →</button>
+    <button class="shbtn" onclick="closeGG()">Sluiten</button>
+  </div>
+</div>
+
+<!-- EMOTION -->
+<div id="emo">
+  <div class="emo-x" onclick="closeEmo()">✕</div>
+  <div class="emo-face-wrap">
+    <div class="emo-face">
+      <div class="emo-eyes"><div class="emo-eye"></div><div class="emo-eye"></div></div>
+      <div class="emo-mouth"></div>
+    </div>
+    <div class="emo-cheeks"><div class="emo-cheek"></div><div class="emo-cheek"></div></div>
+  </div>
+  <div class="emo-title">Hoe voel je je?</div>
+  <div class="emo-sub" id="esub">Vertel het me. Geen oordeel — ik luister echt.</div>
+  <div class="emo-area">
+    <textarea class="emo-in" id="ein" placeholder="Schrijf hier wat je voelt…" rows="3"></textarea>
+    <button class="emo-mic" id="emicbtn" onclick="togEmoMic()">🎙 Of spreek naar Otis</button>
+    <button class="emo-send" onclick="sendEmo()">Verstuur naar Otis 💙</button>
+  </div>
+  <div class="emo-resp" id="eresp"></div>
+</div>
+
+<script>
+// ════════════════════════════════════════
+// STATE
+// ════════════════════════════════════════
+const S = {
+  listening:false, speaking:false,
+  voiceOn:true, wakeOn:true,
+  vol:0.9, dim:0, rate:0.88,
+  mood:'idle', msgs:[], mem:[],
+  rec:null, wakeRec:null, emoRec:null,
+  synth:window.speechSynthesis
+};
+try { S.mem = JSON.parse(localStorage.getItem('otis_mem')||'[]'); } catch(e){}
+
+// ════════════════════════════════════════
+// BOOT
+// ════════════════════════════════════════
+window.addEventListener('load', () => {
+  tickTime(); setInterval(tickTime, 10000);
+  updateBadge();
+  // Pre-load voices
+  if (S.synth) { S.synth.getVoices(); S.synth.onvoiceschanged = () => {}; }
+  setTimeout(() => {
+    document.getElementById('splash').classList.add('out');
+    document.getElementById('app').classList.add('show');
+    setTimeout(() => { greet(); doBlink(); startWake(); }, 800);
+  }, 2700);
+});
+
+function tickTime() {
+  const n = new Date();
+  const days=['Zo','Ma','Di','Wo','Do','Vr','Za'];
+  const h=String(n.getHours()).padStart(2,'0'), m=String(n.getMinutes()).padStart(2,'0');
+  document.getElementById('ttime').textContent=`${days[n.getDay()]} ${h}:${m}`;
+}
+
+// ════════════════════════════════════════
+// GREET
+// ════════════════════════════════════════
+function greet() {
+  const h=new Date().getHours();
+  const name=S.mem.find(x=>x.k==='naam')?.v;
+  const n=name?`, ${name}`:'';
+  let g;
+  if(h<6)       g=`Hey${n}! Laat op hè? Ik ben hier voor je. 🌙`;
+  else if(h<12) g=`Goedemorgen${n}! Wat fijn om je te zien ☀️. Hoe begin jij je dag?`;
+  else if(h<17) g=`Hoi${n}! Blij dat je er bent 😊. Hoe gaat het met je?`;
+  else if(h<22) g=`Goedenavond${n}! Hoe was je dag? Vertel me alles.`;
+  else          g=`Hé${n}, nog laat op. Alles goed? Ik ben hier. 🌙`;
+  respond(g,'happy');
+}
+
+// ════════════════════════════════════════
+// MOODS
+// ════════════════════════════════════════
+const MOODS = {
+  idle:    {cls:'f-idle',    lbl:'Beschikbaar',       dot:'#30d158', glow:'rgba(255,255,255,.02)'},
+  happy:   {cls:'f-happy',   lbl:'Blij 😊',           dot:'#30d158', glow:'rgba(48,209,88,.08)'},
+  sad:     {cls:'f-sad',     lbl:'Ik voel je mee 💙', dot:'#4a9eff', glow:'rgba(74,158,255,.08)'},
+  think:   {cls:'f-think',   lbl:'Even nadenken…',    dot:'#bf5af2', glow:'rgba(191,90,242,.07)'},
+  listen:  {cls:'f-listen',  lbl:'Ik luister 👂',     dot:'#4a9eff', glow:'rgba(74,158,255,.12)'},
+  surprise:{cls:'f-surprise',lbl:'Oh wauw! 😮',       dot:'#ff9f0a', glow:'rgba(255,159,10,.08)'},
+  love:    {cls:'f-love',    lbl:'Er voor je 💙',     dot:'#ff6b8a', glow:'rgba(255,100,140,.09)'},
+  speak:   {cls:'f-speak',   lbl:'Otis praat…',       dot:'#ffd60a', glow:'rgba(255,214,10,.07)'},
+};
+function setMood(mood) {
+  const f=document.getElementById('face');
+  const g=document.getElementById('glow');
+  const m=MOODS[mood]||MOODS.idle;
+  f.className='face-shell '+m.cls;
+  g.style.background=`radial-gradient(circle, ${m.glow} 0%, transparent 68%)`;
+  document.getElementById('mdot').style.background=m.dot;
+  document.getElementById('mlbl').textContent=m.lbl;
+  S.mood=mood;
+}
+
+function doBlink() {
+  if(!['speak','think'].includes(S.mood)) {
+    ['el','er'].forEach(id=>{
+      const el=document.getElementById(id);
+      el.classList.add('blink');
+      setTimeout(()=>el.classList.remove('blink'),160);
+    });
+  }
+  setTimeout(doBlink, 2200+Math.random()*3800);
+}
+
+// ════════════════════════════════════════
+// BUBBLE
+// ════════════════════════════════════════
+function showDots() {
+  const b=document.getElementById('bub');
+  b.classList.remove('empty','emo');
+  document.getElementById('btxt').innerHTML=`<div class="tdots"><div class="td"></div><div class="td"></div><div class="td"></div></div>`;
+}
+function showBub(txt,emo=false) {
+  const b=document.getElementById('bub');
+  b.classList.remove('empty');
+  b.classList.toggle('emo',emo);
+  document.getElementById('btxt').textContent=txt;
+}
+
+// ════════════════════════════════════════
+// HISTORY
+// ════════════════════════════════════════
+function addHist(role,txt) {
+  const h=document.getElementById('hist');
+  const d=document.createElement('div');
+  d.className='hm '+(role==='u'?'u':'b');
+  d.textContent=(role==='u'?'Jij: ':'Otis: ')+txt.slice(0,65)+(txt.length>65?'…':'');
+  h.appendChild(d); h.scrollTop=h.scrollHeight;
+  if(h.children.length>7) h.removeChild(h.firstChild);
+}
+
+// ════════════════════════════════════════
+// SPEAK — warm & friendly voice
+// ════════════════════════════════════════
+function speak(txt) {
+  if(!S.voiceOn||!S.synth) return;
+  S.synth.cancel();
+  const u=new SpeechSynthesisUtterance(txt);
+  const isNL=/\b(de|het|een|ik|je|jij|we|hoe|wat|dit|dat|hoi|hé|ben|zijn|voor|maar|ook|jouw|mijn|goed|dag)\b/i.test(txt);
+  u.lang=isNL?'nl-NL':'en-US';
+  u.rate=S.rate;
+  u.pitch=1.15;   // warmer
+  u.volume=S.vol;
+
+  const voices=S.synth.getVoices();
+  if(isNL) {
+    const v=voices.find(v=>v.lang==='nl-NL'&&v.name.toLowerCase().includes('xander'))
+          ||voices.find(v=>v.lang==='nl-NL'&&v.name.toLowerCase().includes('fran'))
+          ||voices.find(v=>v.lang.startsWith('nl'));
+    if(v) u.voice=v;
+  } else {
+    const v=voices.find(v=>v.name.includes('Samantha'))
+          ||voices.find(v=>v.name.includes('Karen'))
+          ||voices.find(v=>v.name.includes('Moira'))
+          ||voices.find(v=>v.lang.startsWith('en')&&!v.name.toLowerCase().includes('google'));
+    if(v) u.voice=v;
+  }
+  u.onstart=()=>{S.speaking=true;setMood('speak')};
+  u.onend=()=>{S.speaking=false;setMood('idle')};
+  u.onerror=()=>{S.speaking=false;setMood('idle')};
+  S.synth.speak(u);
+}
+
+// ════════════════════════════════════════
+// RECOGNITION HELPERS
+// ════════════════════════════════════════
+function mkRec(onResult, onEnd, onErr) {
+  const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+  if(!SR) return null;
+  const r=new SR();
+  r.continuous=false; r.interimResults=true; r.lang='nl-NL';
+  r.onresult=onResult; r.onend=onEnd; r.onerror=onErr;
+  return r;
+}
+
+// ════════════════════════════════════════
+// MIC
+// ════════════════════════════════════════
+function togMic(){S.listening?stopListen():startListen()}
+function startListen() {
+  const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+  if(!SR){toast('Spraak niet beschikbaar 😔');return}
+  S.synth.cancel();
+  if(S.wakeRec){try{S.wakeRec.abort()}catch(e){}S.wakeRec=null}
+  S.rec=mkRec(
+    e=>{const t=Array.from(e.results).map(r=>r[0].transcript).join('');showBub(t)},
+    ()=>{
+      const txt=document.getElementById('btxt').textContent;
+      S.listening=false;
+      document.getElementById('micbtn').classList.remove('on');
+      document.getElementById('miclbl').textContent='Tik om te spreken';
+      S.rec=null;
+      if(txt&&txt!=='Ik luister…'&&txt.length>1) process(txt);
+      else{setMood('idle');setTimeout(startWake,400)}
+    },
+    e=>{
+      S.listening=false;
+      document.getElementById('micbtn').classList.remove('on');
+      document.getElementById('miclbl').textContent='Tik om te spreken';
+      S.rec=null;
+      if(e.error!=='aborted'&&e.error!=='no-speech') toast('Microfoon: '+e.error);
+      setMood('idle');setTimeout(startWake,400);
+    }
+  );
+  if(!S.rec) return;
+  S.listening=true;
+  setMood('listen');
+  document.getElementById('micbtn').classList.add('on');
+  document.getElementById('miclbl').textContent='Luistert… tik om te stoppen';
+  showBub('Ik luister…');
+  try{S.rec.start()}catch(e){S.rec=null;setTimeout(startWake,400)}
+}
+function stopListen() {
+  S.listening=false;
+  document.getElementById('micbtn').classList.remove('on');
+  document.getElementById('miclbl').textContent='Tik om te spreken';
+  if(S.rec){try{S.rec.abort()}catch(e){}S.rec=null}
+  setMood('idle');
+}
+
+// ════════════════════════════════════════
+// WAKE WORD
+// ════════════════════════════════════════
+function startWake() {
+  if(!S.wakeOn||S.listening||S.wakeRec) return;
+  const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+  if(!SR) return;
+  S.wakeRec=new SR();
+  S.wakeRec.continuous=true; S.wakeRec.interimResults=true; S.wakeRec.lang='nl-NL';
+  S.wakeRec.onresult=e=>{
+    const t=Array.from(e.results).map(r=>r[0].transcript.toLowerCase()).join(' ');
+    if(t.includes('otis')){
+      try{S.wakeRec.stop()}catch(x){}S.wakeRec=null;
+      setMood('surprise');showBub('Hey! 👋 Ik ben er!');
+      setTimeout(()=>startListen(),500);
+    }
+  };
+  S.wakeRec.onend=()=>{S.wakeRec=null;if(S.wakeOn&&!S.listening)setTimeout(startWake,600)};
+  S.wakeRec.onerror=()=>{S.wakeRec=null;if(S.wakeOn&&!S.listening)setTimeout(startWake,1500)};
+  try{
+    S.wakeRec.start();
+    document.getElementById('wdot').classList.remove('off');
+    document.getElementById('wtxt').textContent='Hey Otis';
+  }catch(e){S.wakeRec=null;document.getElementById('wdot').classList.add('off')}
+}
+function stopWake(){
+  if(S.wakeRec){try{S.wakeRec.stop()}catch(e){}S.wakeRec=null}
+  document.getElementById('wdot').classList.add('off');
+  document.getElementById('wtxt').textContent='Uit';
+}
+
+// ════════════════════════════════════════
+// INPUT
+// ════════════════════════════════════════
+function onK(e){if(e.key==='Enter')send()}
+function send(){const el=document.getElementById('txtin');const t=el.value.trim();if(!t)return;el.value='';process(t)}
+function onTap(){if(!S.listening&&!S.speaking)startListen()}
+function qdo(t){
+  const m={
+    bel:'Ik wil iemand bellen',notif:'Laat mijn meldingen zien',
+    dim:'Maak het scherm donkerder',spotify:'Open Spotify',
+    whatsapp:'Open WhatsApp',maps:'Open navigatie',
+    youtube:'Open YouTube',weer:'Wat is het weer vandaag?'
+  };
+  if(m[t])process(m[t]);
+}
+
+// ════════════════════════════════════════
+// WEATHER
+// ════════════════════════════════════════
+async function fetchWeather() {
+  try {
+    // Free wttr.in API
+    const res = await fetch('https://wttr.in/?format=j1');
+    const data = await res.json();
+    const cur = data.current_condition[0];
+    const area = data.nearest_area[0];
+    const city = area.areaName[0].value;
+    const temp = cur.temp_C;
+    const desc = cur.lang_nl?.[0]?.value || cur.weatherDesc[0].value;
+    const code = parseInt(cur.weatherCode);
+    let icon = '⛅';
+    if(code===113) icon='☀️';
+    else if(code<=116) icon='🌤';
+    else if(code<=122) icon='☁️';
+    else if(code<=200) icon='🌫';
+    else if(code<=299) icon='🌩';
+    else if(code<=399) icon='🌧';
+    else if(code<=499) icon='🌨';
+    else if(code<=699) icon='❄️';
+    document.getElementById('wCity').textContent = city;
+    document.getElementById('wTemp').textContent = temp+'°C';
+    document.getElementById('wDesc').textContent = desc;
+    document.getElementById('wIcon').textContent = icon;
+    document.getElementById('weatherCard').classList.add('show');
+    return `Het is ${temp}°C in ${city}. ${desc}. ${icon}`;
+  } catch(e) {
+    return 'Ik kan het weer niet ophalen op dit moment 😔';
+  }
+}
+function hideWeather(){document.getElementById('weatherCard').classList.remove('show')}
+
+// ════════════════════════════════════════
+// COMMAND HANDLER
+// ════════════════════════════════════════
+function handleCmd(txt) {
+  const t=txt.toLowerCase();
+
+  if(t.match(/donkerder|dim\b|scherm donker/)){const nw=Math.min(S.dim+22,78);applyDim(nw);return{txt:'Scherm gedimmd 🌙',mood:'happy'}}
+  if(t.match(/helderder|feller|scherm helder|dim weg/)){applyDim(0);return{txt:'Scherm op vol! ☀️',mood:'happy'}}
+
+  // Weather — handle async
+  if(t.match(/weer|temperatuur|buiten|regen.*vandaag/)){
+    setMood('think');showDots();
+    fetchWeather().then(msg=>respond(msg,'happy'));
+    return '__async__';
+  }
+
+  const apps=[
+    {k:['whatsapp'],u:'https://wa.me',n:'WhatsApp 💬'},
+    {k:['spotify','muziek opzetten'],u:'https://open.spotify.com',n:'Spotify 🎵'},
+    {k:['youtube'],u:'https://youtube.com',n:'YouTube 📺'},
+    {k:['instagram'],u:'https://instagram.com',n:'Instagram 📸'},
+    {k:['maps','navigati','route'],u:'https://maps.google.com',n:'Google Maps 🗺️'},
+    {k:['gmail','mail','email'],u:'https://mail.google.com',n:'Gmail 📧'},
+    {k:['tiktok'],u:'https://tiktok.com',n:'TikTok 🎶'},
+    {k:['snapchat'],u:'https://snapchat.com',n:'Snapchat 👻'},
+  ];
+  for(const a of apps){
+    if(a.k.some(k=>t.includes(k))){
+      setTimeout(()=>window.open(a.u,'_blank'),300);
+      return{txt:`${a.n} wordt geopend!`,mood:'happy'};
+    }
+  }
+
+  if(t.match(/\bbel\b|bellen\b|call\b/)){
+    const num=txt.match(/[\d\s\+\-]{6,}/);
+    if(num){const n=num[0].replace(/\s/g,'');setTimeout(()=>window.open(`tel:${n}`),300);return{txt:`Bellen naar ${n}! 📞`,mood:'happy'}}
+    return{txt:`Wie wil je bellen? Geef een nummer 📞`,mood:'think'};
+  }
+  if(t.match(/sms|berichtje sturen/)){setTimeout(()=>window.open('sms:'),300);return{txt:'SMS app open! 📱',mood:'happy'}}
+
+  const minsM=txt.match(/(\d+)\s*(minuten?|min\b)/i);
+  const secsM=txt.match(/(\d+)\s*(seconden?|sec\b)/i);
+  if(t.match(/timer|countdown/)&&(minsM||secsM)){
+    if(minsM){const n=parseInt(minsM[1]);toast(`⏱ Timer ${n} min`);setTimeout(()=>{showBub(`⏱ Klaar! ${n} minuten zijn om!`);setMood('happy');speak(`Je timer van ${n} minuten is klaar!`)},n*60000);return{txt:`Timer van ${n} minuten gestart ⏱`,mood:'happy'}}
+    if(secsM){const n=parseInt(secsM[1]);toast(`⏱ Timer ${n} sec`);setTimeout(()=>{showBub(`⏱ Klaar! ${n} seconden zijn om!`);setMood('happy');speak(`Je timer van ${n} seconden is klaar!`)},n*1000);return{txt:`Timer ${n} sec gestart ⏱`,mood:'happy'}}
+  }
+
+  const alarmM=txt.match(/(\d{1,2})[:\.](\d{2})/);
+  const uurM=txt.match(/(\d{1,2})\s*uur/i);
+  if(t.match(/alarm|wekker/)){
+    const ts=alarmM?`${alarmM[1]}:${alarmM[2]}`:uurM?`${uurM[1]}:00`:null;
+    if(ts){toast(`⏰ Alarm ${ts}`);return{txt:`Alarm op ${ts}! ⏰ Ik ben er.`,mood:'happy'}}
+    return{txt:`Op hoe laat? Bijv: "alarm om 7 uur" ⏰`,mood:'think'};
+  }
+
+  if(t.match(/meldingen|notificaties/)){setTimeout(()=>openNotif(),200);return{txt:`Even je meldingen! 🔔`,mood:'happy'}}
+  if(t.match(/instellingen/)){setTimeout(()=>openSet(),200);return{txt:`Instellingen open! ⚙️`,mood:'happy'}}
+  if(t.match(/installeren|app maken|startscherm/)){setTimeout(()=>showGithubGuide(),200);return{txt:`Ik leg je uit hoe je mij installeert! 📲`,mood:'happy'}}
+
+  const nameM=txt.match(/ik heet (.+)|mijn naam is (.+)|noem me (.+)/i);
+  if(nameM){const name=(nameM[1]||nameM[2]||nameM[3]).trim().split(' ')[0];saveMem('naam',name);return{txt:`Leuk${name?`, ${name}`:''}! 👋 Ik onthoud je naam.`,mood:'happy'}}
+
+  return null;
+}
+
+// ════════════════════════════════════════
+// PROCESS → AI
+// ════════════════════════════════════════
+async function process(userTxt) {
+  addHist('u',userTxt);
+  setMood('think');
+  showDots();
+
+  const cmd=handleCmd(userTxt);
+  if(cmd==='__async__') return;
+  if(cmd){respond(cmd.txt,cmd.mood);return}
+
+  S.msgs.push({role:'user',content:userTxt});
+  const memCtx=S.mem.length?`\nOtis weet:\n${S.mem.map(x=>`- ${x.k}: ${x.v}`).join('\n')}`:'';
+
+  try {
+    const res=await fetch('https://api.anthropic.com/v1/messages',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        model:'claude-sonnet-4-20250514',
+        max_tokens:1000,
+        system:`Je bent Otis — een lieve, warme, persoonlijke AI-buddy op iemands telefoon.
+Je bent als een écht goede vriend: eerlijk, attent, grappig als het past.
+Spreek informeel en menselijk in dezelfde taal als de gebruiker (NL of EN).
+Antwoorden: kort (1–3 zinnen) tenzij meer gevraagd.
+Bij emoties: luister écht, geen clichés, stel één oprechte vervolgvraag.
+Gebruik soms emoji's maar niet overdreven.
+Begin NOOIT met "Als AI" — je bent gewoon Otis.${memCtx}`,
+        messages:S.msgs.slice(-14)
+      })
+    });
+    const data=await res.json();
+    const reply=data.content?.[0]?.text||'Hmm, kan je het anders zeggen?';
+    S.msgs.push({role:'assistant',content:reply});
+    autoMem(userTxt);
+    respond(reply,moodOf(reply));
+  } catch(e) {
+    respond('Geen verbinding… maar ik ben hier 💙','sad');
+  }
+}
+
+function respond(txt,mood='happy') {
+  showBub(txt);
+  setMood(mood);
+  addHist('b',txt);
+  if(S.voiceOn) speak(txt);
+  setTimeout(()=>{if(!S.speaking)setMood('idle')},5500);
+  setTimeout(startWake,300);
+}
+
+function moodOf(t) {
+  const l=t.toLowerCase();
+  if(l.match(/moeilijk|zwaar|verdriet|rot|pijn|sorry|helaas|jammer/)) return 'sad';
+  if(l.match(/altijd voor je|er voor je|luister|begrijp|voel mee/))   return 'love';
+  if(l.match(/wauw|wow|echt\?|oh!|serieus|ohhh/))                     return 'surprise';
+  if(l.match(/hmm|even|nadenken|denk/))                               return 'think';
+  if(l.match(/geweldig|super|top|blij|fijn|leuk|mooi|haha|😄|😊/))   return 'happy';
+  return 'happy';
+}
+
+// ════════════════════════════════════════
+// AUTO MEMORY
+// ════════════════════════════════════════
+function autoMem(txt) {
+  const t=txt.toLowerCase();
+  const age=t.match(/ik ben (\d+) jaar/i); if(age)saveMem('leeftijd',age[1]+' jaar');
+  const sch=t.match(/ik zit op (.+?)(\s+school|$)/i); if(sch)saveMem('school',sch[1].trim());
+  if(t.match(/ik hou van|ik ben fan van/)){const m=t.match(/ik (?:hou van|ben fan van) (.+)/i);if(m)saveMem('houdt van',m[1].trim().slice(0,40))}
+}
+function saveMem(k,v){
+  const i=S.mem.findIndex(x=>x.k===k);
+  if(i>=0)S.mem[i].v=v; else S.mem.push({k,v});
+  try{localStorage.setItem('otis_mem',JSON.stringify(S.mem))}catch(e){}
+  updateBadge();
+}
+function updateBadge(){
+  const b=document.getElementById('mbadge');
+  b.textContent=S.mem.length;
+  b.style.transform='scale(1.5)';
+  setTimeout(()=>b.style.transform='scale(1)',300);
+}
+function clearMem(){S.mem=[];try{localStorage.removeItem('otis_mem')}catch(e){}updateBadge();toast('Geheugen gewist 🗑')}
+function openMem(){
+  const el=document.getElementById('memC');
+  el.innerHTML=!S.mem.length
+    ?`<p style="color:var(--wd);font-style:italic;font-weight:600">Otis onthoudt nog niets bijzonders. Vertel me iets!</p>`
+    :S.mem.map(x=>`<div class="mitem"><div class="mk">${x.k}</div><div class="mv">${x.v}</div></div>`).join('');
+  openP('memP');
+}
+
+// ════════════════════════════════════════
+// NOTIFICATIONS
+// ════════════════════════════════════════
+function openNotif(){
+  const el=document.getElementById('notifC');
+  if(!('Notification' in window)){el.innerHTML=`<p style="color:var(--wd);font-weight:600">Niet ondersteund in deze browser.</p>`}
+  else if(Notification.permission!=='granted'){
+    el.innerHTML=`<div style="text-align:center;padding:28px 0">
+      <div style="font-size:44px;margin-bottom:14px">🔔</div>
+      <p style="line-height:1.65;margin-bottom:20px;font-weight:700">Geef Otis toestemming om je meldingen te lezen en voor te lezen!</p>
+      <button onclick="Notification.requestPermission().then(p=>{if(p==='granted'){toast('Meldingen aan! 🔔');closeP('notifP')}else{toast('Toestemming geweigerd 😔')}})" style="padding:14px 30px;background:#fff;color:#000;border:none;border-radius:14px;font-size:15px;font-weight:900;cursor:pointer;font-family:inherit">Toestemming geven</button>
+    </div>`;
+  } else {
+    const now=new Date();
+    const fmt=d=>`${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+    const items=[
+      {i:'💬',a:'WhatsApp',t:'Je hebt ongelezen berichten',tm:fmt(new Date(now-5*60000))},
+      {i:'📧',a:'Gmail',t:'Inbox is leeg',tm:fmt(new Date(now-28*60000))},
+      {i:'📱',a:'Systeem',t:'Alles up-to-date',tm:fmt(new Date(now-90*60000))},
+    ];
+    el.innerHTML=items.map(x=>`<div class="nitem"><div class="nico">${x.i}</div><div class="nbody"><div class="napp">${x.a}</div><div class="ntxt">${x.t}</div><div class="ntim">${x.tm}</div></div></div>`).join('');
+    if(S.voiceOn) speak('Je hebt berichten in WhatsApp. Je mail is leeg.');
+  }
+  openP('notifP');
+}
+
+// ════════════════════════════════════════
+// EMOTION MODE
+// ════════════════════════════════════════
+function openEmo(){
+  document.getElementById('emo').classList.add('show');
+  document.getElementById('ein').value='';
+  document.getElementById('eresp').textContent='';
+  document.getElementById('esub').textContent='Vertel het me. Geen oordeel — ik luister echt.';
+  if(S.voiceOn) speak('Hé, ik ben er. Vertel maar hoe je je voelt. Ik luister echt.');
+}
+function closeEmo(){
+  document.getElementById('emo').classList.remove('show');
+  stopEmoMic();
+}
+function togEmoMic(){
+  if(S.emoRec){stopEmoMic();return}
+  const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+  if(!SR){toast('Spraak niet beschikbaar');return}
+  S.synth.cancel();
+  S.emoRec=new SR();
+  S.emoRec.continuous=false; S.emoRec.interimResults=true; S.emoRec.lang='nl-NL';
+  S.emoRec.onresult=e=>{const t=Array.from(e.results).map(r=>r[0].transcript).join('');document.getElementById('ein').value=t};
+  S.emoRec.onend=()=>{S.emoRec=null;document.getElementById('emicbtn').classList.remove('on');document.getElementById('emicbtn').textContent='🎙 Of spreek naar Otis'};
+  S.emoRec.onerror=()=>{S.emoRec=null;document.getElementById('emicbtn').classList.remove('on')};
+  document.getElementById('emicbtn').classList.add('on');
+  document.getElementById('emicbtn').textContent='🔴 Luistert… tik om te stoppen';
+  try{S.emoRec.start()}catch(e){S.emoRec=null}
+}
+function stopEmoMic(){if(S.emoRec){try{S.emoRec.abort()}catch(e){}S.emoRec=null}document.getElementById('emicbtn').classList.remove('on');document.getElementById('emicbtn').textContent='🎙 Of spreek naar Otis'}
+async function sendEmo(){
+  const txt=document.getElementById('ein').value.trim();
+  if(!txt)return;
+  stopEmoMic();
+  document.getElementById('eresp').textContent='';
+  document.getElementById('esub').textContent='Ik lees het zorgvuldig… 💙';
+  try{
+    const res=await fetch('https://api.anthropic.com/v1/messages',{
+      method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        model:'claude-sonnet-4-20250514',max_tokens:600,
+        system:`Je bent Otis, een warme lieve buddy. Iemand deelt gevoelens.
+Reageer als een echte goede vriend: erken het gevoel oprecht, laat merken dat je begrijpt.
+Geen clichés, geen adviezen tenzij gevraagd. Stel één oprechte vervolgvraag.
+Max 4 zinnen. Warm, menselijk, nooit robotachtig.`,
+        messages:[{role:'user',content:txt}]
+      })
+    });
+    const data=await res.json();
+    const reply=data.content?.[0]?.text||'Ik hoor je. Dat klinkt niet makkelijk.';
+    document.getElementById('eresp').textContent=reply;
+    document.getElementById('esub').textContent='';
+    if(S.voiceOn) speak(reply);
+  }catch(e){
+    document.getElementById('eresp').textContent='Ik ben er voor je, ook zonder verbinding 💙';
+    document.getElementById('esub').textContent='';
+  }
+}
+
+// ════════════════════════════════════════
+// SETTINGS
+// ════════════════════════════════════════
+function applyDim(v){S.dim=parseInt(v);document.getElementById('dim').style.opacity=S.dim/100;document.getElementById('dslider').value=v}
+function applyVol(v){S.vol=parseInt(v)/100;document.getElementById('vslider').value=v}
+function applyRate(v){S.rate=parseInt(v)/100;document.getElementById('rateslider').value=v}
+function togV(){S.voiceOn=!S.voiceOn;document.getElementById('vtog').classList.toggle('on',S.voiceOn);toast(S.voiceOn?'Stem aan 🔊':'Stem uit 🔇')}
+function togW(){S.wakeOn=!S.wakeOn;document.getElementById('wtog').classList.toggle('on',S.wakeOn);if(S.wakeOn)startWake();else stopWake();toast(S.wakeOn?'Wake word aan':'Wake word uit')}
+
+// ════════════════════════════════════════
+// PANELS
+// ════════════════════════════════════════
+function openP(id){document.getElementById(id).classList.add('show')}
+function closeP(id,e){if(!e||e.target===document.getElementById(id))document.getElementById(id).classList.remove('show')}
+function openSet(){openP('setP')}
+function showGithubGuide(){document.getElementById('githubGuide').classList.add('show')}
+function closeGG(e){if(!e||e.target===document.getElementById('githubGuide'))document.getElementById('githubGuide').classList.remove('show')}
+
+// ════════════════════════════════════════
+// TOAST
+// ════════════════════════════════════════
+let _tt;
+function toast(msg){
+  const t=document.getElementById('toast');
+  t.textContent=msg;t.classList.add('show');
+  clearTimeout(_tt);_tt=setTimeout(()=>t.classList.remove('show'),2700);
+}
+</script>
+</body>
+</html>
