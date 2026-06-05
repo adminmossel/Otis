@@ -1,0 +1,19 @@
+{
+  "name": "Otis",
+  "short_name": "Otis",
+  "description": "Jouw persoonlijke AI buddy",
+  "start_url": "/otis/",
+  "scope": "/otis/",
+  "display": "standalone",
+  "background_color": "#000000",
+  "theme_color": "#000000",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' rx='115' fill='%23000'/%3E%3Ccircle cx='185' cy='235' r='26' fill='%23fff'/%3E%3Ccircle cx='327' cy='235' r='26' fill='%23fff'/%3E%3Cpath d='M185 315 Q256 378 327 315' stroke='%23fff' stroke-width='20' fill='none' stroke-linecap='round'/%3E%3C/svg%3E",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
